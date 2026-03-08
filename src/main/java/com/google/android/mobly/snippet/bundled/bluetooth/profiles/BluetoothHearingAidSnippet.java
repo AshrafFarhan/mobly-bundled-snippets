@@ -1,6 +1,22 @@
+/*
+ * Copyright (C) 2017 Google Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
+ */
+
 package com.google.android.mobly.snippet.bundled.bluetooth.profiles;
 
-import android.annotation.TargetApi;
+import android.annotation.SuppressLint;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothHearingAid;
@@ -9,6 +25,7 @@ import android.content.Context;
 import android.content.IntentFilter;
 import android.os.Build;
 import android.os.Bundle;
+import androidx.annotation.RequiresApi;
 import androidx.test.platform.app.InstrumentationRegistry;
 import com.google.android.mobly.snippet.Snippet;
 import com.google.android.mobly.snippet.bundled.bluetooth.BluetoothAdapterSnippet;
@@ -20,6 +37,10 @@ import com.google.android.mobly.snippet.rpc.RpcMinSdk;
 import com.google.common.base.Ascii;
 import java.util.ArrayList;
 
+/** Snippet class exposing Bluetooth Hearing Aid profile. */
+@SuppressWarnings("unused")
+@SuppressLint("MissingPermission")
+@RequiresApi(Build.VERSION_CODES.Q)
 public class BluetoothHearingAidSnippet implements Snippet {
     public static class BluetoothHearingAidSnippetException extends Exception {
         private static final long serialVersionUID = 1;
@@ -36,20 +57,19 @@ public class BluetoothHearingAidSnippet implements Snippet {
     private static BluetoothHearingAid hearingAidProfile;
     private final JsonSerializer jsonSerializer = new JsonSerializer();
 
-    @TargetApi(Build.VERSION_CODES.Q)
     public BluetoothHearingAidSnippet() throws BluetoothHearingAidSnippetException {
         context = InstrumentationRegistry.getInstrumentation().getContext();
         BluetoothAdapter bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
-        boolean isProxyConnectionStarted = bluetoothAdapter.getProfileProxy(
-                context, new HearingAidServiceListener(), BluetoothProfile.HEARING_AID);
+        boolean isProxyConnectionStarted =
+                bluetoothAdapter.getProfileProxy(
+                        context, new HearingAidServiceListener(), BluetoothProfile.HEARING_AID);
         if (!isProxyConnectionStarted) {
             throw new BluetoothHearingAidSnippetException(
-                "Failed to start proxy connection for HEARING AID profile.");
+                    "Failed to start proxy connection for HEARING AID profile.");
         }
         Utils.waitUntil(() -> isHearingAidProfileReady, TIMEOUT_SEC);
     }
 
-    @TargetApi(Build.VERSION_CODES.Q)
     private static class HearingAidServiceListener implements BluetoothProfile.ServiceListener {
         @Override
         public void onServiceConnected(int var1, BluetoothProfile profile) {
@@ -63,7 +83,6 @@ public class BluetoothHearingAidSnippet implements Snippet {
         }
     }
 
-    @TargetApi(Build.VERSION_CODES.Q)
     @RpcMinSdk(Build.VERSION_CODES.Q)
     @Rpc(description = "Connects to a paired or discovered device with HA profile.")
     public void btHearingAidConnect(String deviceAddress) throws Throwable {
@@ -83,6 +102,7 @@ public class BluetoothHearingAidSnippet implements Snippet {
         }
     }
 
+    @RpcMinSdk(Build.VERSION_CODES.Q)
     @Rpc(description = "Disconnects a device from HA profile.")
     public void btHearingAidDisconnect(String deviceAddress) throws Throwable {
         BluetoothDevice device = getConnectedBluetoothDevice(deviceAddress);
@@ -99,6 +119,7 @@ public class BluetoothHearingAidSnippet implements Snippet {
         }
     }
 
+    @RpcMinSdk(Build.VERSION_CODES.Q)
     @Rpc(description = "Gets all the devices currently connected via HA profile.")
     public ArrayList<Bundle> btHearingAidGetConnectedDevices() {
         return jsonSerializer.serializeBluetoothDeviceList(hearingAidProfile.getConnectedDevices());
@@ -111,8 +132,9 @@ public class BluetoothHearingAidSnippet implements Snippet {
                 return device;
             }
         }
-        throw new BluetoothHearingAidSnippetException(String.format(
-                "No device with address %s is connected via HA Profile.", deviceAddress));
+        throw new BluetoothHearingAidSnippetException(
+                String.format(
+                        "No device with address %s is connected via HA Profile.", deviceAddress));
     }
 
     @Override

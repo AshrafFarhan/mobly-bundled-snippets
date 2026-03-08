@@ -16,16 +16,19 @@
 
 package com.google.android.mobly.snippet.bundled;
 
+import android.annotation.SuppressLint;
 import android.content.Context;
-import android.media.AudioManager;
 import android.media.AudioDeviceInfo;
+import android.media.AudioManager;
 import androidx.test.platform.app.InstrumentationRegistry;
 import com.google.android.mobly.snippet.Snippet;
 import com.google.android.mobly.snippet.rpc.Rpc;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 
-/* Snippet class to control audio */
+/** Snippet class to control audio. */
+@SuppressWarnings("unused")
+@SuppressLint({"MissingPermission", "DiscouragedPrivateApi"})
 public class AudioSnippet implements Snippet {
 
     private final AudioManager mAudioManager;
@@ -130,7 +133,11 @@ public class AudioSnippet implements Snippet {
          * calling muteAll will throw. */
         Class<?> audioSystem = Class.forName("android.media.AudioSystem");
         Method getNumStreamTypes = audioSystem.getDeclaredMethod("getNumStreamTypes");
-        int numStreams = (int) getNumStreamTypes.invoke(null /* instance */);
+        Object result = getNumStreamTypes.invoke(null /* instance */);
+        if (result == null) {
+            throw new RuntimeException("Failed to get number of audio streams.");
+        }
+        int numStreams = (int) result;
         for (int i = 0; i < numStreams; i++) {
             mAudioManager.setStreamVolume(i /* audio stream */, 0 /* value */, 0 /* flags */);
         }
@@ -150,7 +157,9 @@ public class AudioSnippet implements Snippet {
     }
 
     @Rpc(description = "Mute alarm stream.")
-    public void muteAlarm() { setAlarmVolume(0); }
+    public void muteAlarm() {
+        setAlarmVolume(0);
+    }
 
     @Rpc(
             description =

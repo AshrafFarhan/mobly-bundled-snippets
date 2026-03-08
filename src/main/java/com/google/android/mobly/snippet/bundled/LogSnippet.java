@@ -21,6 +21,7 @@ import com.google.android.mobly.snippet.Snippet;
 import com.google.android.mobly.snippet.rpc.Rpc;
 
 /** Snippet class exposing Android APIs related to logging. */
+@SuppressWarnings("unused")
 public class LogSnippet implements Snippet {
     private String mTag = "MoblyTestLog";
 

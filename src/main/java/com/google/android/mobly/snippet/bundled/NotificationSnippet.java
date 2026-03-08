@@ -23,6 +23,7 @@ import com.google.android.mobly.snippet.rpc.Rpc;
 import com.google.android.mobly.snippet.rpc.RunOnUiThread;
 
 /** Snippet class exposing Android APIs related to creating notification on screen. */
+@SuppressWarnings("unused")
 public class NotificationSnippet implements Snippet {
 
     @RunOnUiThread

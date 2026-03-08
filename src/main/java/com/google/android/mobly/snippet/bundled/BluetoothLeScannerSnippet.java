@@ -16,7 +16,7 @@
 
 package com.google.android.mobly.snippet.bundled;
 
-import android.annotation.TargetApi;
+import android.annotation.SuppressLint;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.le.BluetoothLeScanner;
 import android.bluetooth.le.ScanCallback;
@@ -43,8 +43,9 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-/** Snippet class exposing Android APIs in WifiManager. */
-@TargetApi(Build.VERSION_CODES.LOLLIPOP_MR1)
+/** Snippet class exposing Android APIs in BluetoothLeScanner. */
+@SuppressWarnings("unused")
+@SuppressLint("MissingPermission")
 public class BluetoothLeScannerSnippet implements Snippet {
     private static class BluetoothLeScanSnippetException extends Exception {
         private static final long serialVersionUID = 1;
@@ -104,8 +105,10 @@ public class BluetoothLeScannerSnippet implements Snippet {
             mScanner.startScan(callback);
         } else {
             ArrayList<ScanFilter> filters = new ArrayList<>();
-            for (int i = 0; i < scanFilters.length(); i++) {
-                filters.add(JsonDeserializer.jsonToScanFilter(scanFilters.getJSONObject(i)));
+            if (scanFilters != null) {
+                for (int i = 0; i < scanFilters.length(); i++) {
+                    filters.add(JsonDeserializer.jsonToScanFilter(scanFilters.getJSONObject(i)));
+                }
             }
             ScanSettings settings = JsonDeserializer.jsonToScanSettings(scanSettings);
             mScanner.startScan(filters, settings, callback);

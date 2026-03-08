@@ -13,8 +13,10 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
+
 package com.google.android.mobly.snippet.bundled;
 
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.pm.PackageManager;
 import android.net.wifi.aware.WifiAwareManager;
@@ -24,6 +26,8 @@ import com.google.android.mobly.snippet.bundled.utils.Utils;
 import com.google.android.mobly.snippet.rpc.Rpc;
 
 /** Snippet class exposing Android APIs in WifiAwareManager. */
+@SuppressWarnings("unused")
+@SuppressLint("MissingPermission")
 public class WifiAwareManagerSnippet implements Snippet {
 
     private static class WifiAwareManagerSnippetException extends Exception {
@@ -33,16 +37,18 @@ public class WifiAwareManagerSnippet implements Snippet {
             super(msg);
         }
     }
+
     private final Context mContext;
-    private boolean mIsAwareSupported;
-    WifiAwareManager mWifiAwareManager;
+    private final boolean mIsAwareSupported;
+    private WifiAwareManager mWifiAwareManager;
 
     public WifiAwareManagerSnippet() throws Throwable {
         mContext = InstrumentationRegistry.getInstrumentation().getContext();
         mIsAwareSupported =
-            mContext.getPackageManager().hasSystemFeature(PackageManager.FEATURE_WIFI_AWARE);
+                mContext.getPackageManager().hasSystemFeature(PackageManager.FEATURE_WIFI_AWARE);
         if (mIsAwareSupported) {
-            mWifiAwareManager = (WifiAwareManager) mContext.getSystemService(Context.WIFI_AWARE_SERVICE);
+            mWifiAwareManager =
+                    (WifiAwareManager) mContext.getSystemService(Context.WIFI_AWARE_SERVICE);
         }
         Utils.adaptShellPermissionIfRequired(mContext);
     }
@@ -50,10 +56,12 @@ public class WifiAwareManagerSnippet implements Snippet {
     /** Checks if Aware is available. This could return false if WiFi or location is disabled. */
     @Rpc(description = "check if Aware is available.")
     public boolean wifiAwareIsAvailable() throws WifiAwareManagerSnippetException {
-        if (!mIsAwareSupported) {
-            throw new WifiAwareManagerSnippetException(
-                    "WifiAware is not supported in this device");
+        if (!mIsAwareSupported || mWifiAwareManager == null) {
+            throw new WifiAwareManagerSnippetException("WifiAware is not supported in this device");
         }
         return mWifiAwareManager.isAvailable();
     }
+
+    @Override
+    public void shutdown() {}
 }

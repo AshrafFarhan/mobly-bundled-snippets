@@ -1,13 +1,12 @@
 package com.google.android.mobly.snippet.bundled.bluetooth.profiles;
 
-import android.annotation.TargetApi;
+import android.annotation.SuppressLint;
 import android.bluetooth.BluetoothA2dp;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothProfile;
 import android.content.Context;
 import android.content.IntentFilter;
-import android.os.Build;
 import android.os.Bundle;
 import androidx.test.platform.app.InstrumentationRegistry;
 import com.google.android.mobly.snippet.Snippet;
@@ -16,9 +15,10 @@ import com.google.android.mobly.snippet.bundled.bluetooth.PairingBroadcastReceiv
 import com.google.android.mobly.snippet.bundled.utils.JsonSerializer;
 import com.google.android.mobly.snippet.bundled.utils.Utils;
 import com.google.android.mobly.snippet.rpc.Rpc;
-import com.google.android.mobly.snippet.rpc.RpcMinSdk;
 import java.util.ArrayList;
 
+@SuppressWarnings("unused")
+@SuppressLint("MissingPermission")
 public class BluetoothA2dpSnippet implements Snippet {
     public static class BluetoothA2dpSnippetException extends Exception {
         private static final long serialVersionUID = 1;
@@ -28,7 +28,7 @@ public class BluetoothA2dpSnippet implements Snippet {
         }
     }
 
-    private Context mContext;
+    private final Context mContext;
     private static boolean sIsA2dpProfileReady = false;
     private static BluetoothA2dp sA2dpProfile;
     private final JsonSerializer mJsonSerializer = new JsonSerializer();
@@ -36,11 +36,12 @@ public class BluetoothA2dpSnippet implements Snippet {
     public BluetoothA2dpSnippet() throws BluetoothA2dpSnippetException {
         mContext = InstrumentationRegistry.getInstrumentation().getContext();
         BluetoothAdapter bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
-        boolean isProxyConnectionStarted = bluetoothAdapter.getProfileProxy(
-                mContext, new A2dpServiceListener(), BluetoothProfile.A2DP);
+        boolean isProxyConnectionStarted =
+                bluetoothAdapter.getProfileProxy(
+                        mContext, new A2dpServiceListener(), BluetoothProfile.A2DP);
         if (!isProxyConnectionStarted) {
             throw new BluetoothA2dpSnippetException(
-                "Failed to start proxy connection for A2DP profile.");
+                    "Failed to start proxy connection for A2DP profile.");
         }
         Utils.waitUntil(() -> sIsA2dpProfileReady, 60);
     }
@@ -58,8 +59,6 @@ public class BluetoothA2dpSnippet implements Snippet {
         }
     }
 
-    @TargetApi(Build.VERSION_CODES.KITKAT)
-    @RpcMinSdk(Build.VERSION_CODES.KITKAT)
     @Rpc(
             description =
                     "Connects to a paired or discovered device with A2DP profile."

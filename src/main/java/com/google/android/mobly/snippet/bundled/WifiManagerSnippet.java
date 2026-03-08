@@ -16,6 +16,7 @@
 
 package com.google.android.mobly.snippet.bundled;
 
+import android.annotation.SuppressLint;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -25,13 +26,12 @@ import android.net.Network;
 import android.net.NetworkCapabilities;
 import android.net.NetworkRequest;
 import android.net.wifi.ScanResult;
-import android.net.wifi.SupplicantState;
 import android.net.wifi.WifiConfiguration;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
 import android.os.Build;
+import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.annotation.RequiresApi;
 import androidx.test.platform.app.InstrumentationRegistry;
 import com.google.android.mobly.snippet.Snippet;
 import com.google.android.mobly.snippet.bundled.utils.JsonDeserializer;
@@ -48,8 +48,10 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 /** Snippet class exposing Android APIs in WifiManager. */
+@SuppressWarnings({"unused", "deprecation"})
+@SuppressLint("MissingPermission")
 public class WifiManagerSnippet implements Snippet {
-    private static class WifiManagerSnippetException extends Exception {
+    public static class WifiManagerSnippetException extends Exception {
         private static final long serialVersionUID = 1;
 
         public WifiManagerSnippetException(String msg) {
@@ -77,39 +79,34 @@ public class WifiManagerSnippet implements Snippet {
     }
 
     private void registerNetworkStateCallback() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) {
-        return;
-        }
-
         mConnectivityManager.registerNetworkCallback(
-            new NetworkRequest.Builder().addTransportType(NetworkCapabilities.TRANSPORT_WIFI).build(),
-            new ConnectivityManager.NetworkCallback() {
-                @Override
-                public void onAvailable(Network network) {
-                    mIsWifiConnected.set(true);
-                }
+                new NetworkRequest.Builder()
+                        .addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
+                        .build(),
+                new ConnectivityManager.NetworkCallback() {
+                    @Override
+                    public void onAvailable(@NonNull Network network) {
+                        mIsWifiConnected.set(true);
+                    }
 
-                @Override
-                public void onLost(Network network) {
-                    mIsWifiConnected.set(false);
-                }
-            });
+                    @Override
+                    public void onLost(@NonNull Network network) {
+                        mIsWifiConnected.set(false);
+                    }
+                });
     }
 
     @Rpc(description = "Checks if Wi-Fi is connected.")
     public boolean isWifiConnected() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) {
-            return mWifiManager
-                    .getConnectionInfo()
-                    .getSupplicantState()
-                    .equals(SupplicantState.COMPLETED);
-        } else {
-            return mIsWifiConnected.get();
-        }
+        return mIsWifiConnected.get();
     }
 
     private boolean isWifiConnectedToSsid(String ssid) {
-        return mWifiManager.getConnectionInfo().getSSID().equals(ssid);
+        WifiInfo wifiInfo = mWifiManager.getConnectionInfo();
+        if (wifiInfo == null || wifiInfo.getSSID() == null) {
+            return false;
+        }
+        return wifiInfo.getSSID().equals(ssid);
     }
 
     @Rpc(
@@ -138,13 +135,13 @@ public class WifiManagerSnippet implements Snippet {
 
         // Re-check configured configs list to ensure that it is cleared
         unremovedConfigs = mWifiManager.getConfiguredNetworks();
-        if (!unremovedConfigs.isEmpty()) {
+        if (unremovedConfigs != null && !unremovedConfigs.isEmpty()) {
             throw new WifiManagerSnippetException("Failed to remove networks: " + unremovedConfigs);
         }
     }
 
     @Rpc(description = "Turns on Wi-Fi with a 30s timeout.")
-    public void wifiEnable() throws InterruptedException, WifiManagerSnippetException {
+    public void wifiEnable() throws WifiManagerSnippetException {
         if (mWifiManager.getWifiState() == WifiManager.WIFI_STATE_ENABLED) {
             return;
         }
@@ -169,7 +166,7 @@ public class WifiManagerSnippet implements Snippet {
     }
 
     @Rpc(description = "Turns off Wi-Fi with a 30s timeout.")
-    public void wifiDisable() throws InterruptedException, WifiManagerSnippetException {
+    public void wifiDisable() throws WifiManagerSnippetException {
         if (mWifiManager.getWifiState() == WifiManager.WIFI_STATE_DISABLED) {
             return;
         }
@@ -220,8 +217,7 @@ public class WifiManagerSnippet implements Snippet {
             description =
                     "Start scan, wait for scan to complete, and return results, which is a list of "
                             + "serialized WifiScanResult objects.")
-    public JSONArray wifiScanAndGetResults()
-            throws InterruptedException, JSONException, WifiManagerSnippetException {
+    public JSONArray wifiScanAndGetResults() throws JSONException, WifiManagerSnippetException {
         mContext.registerReceiver(
                 new WifiScanReceiver(),
                 new IntentFilter(WifiManager.SCAN_RESULTS_AVAILABLE_ACTION));
@@ -234,12 +230,12 @@ public class WifiManagerSnippet implements Snippet {
         return wifiGetCachedScanResults();
     }
 
-  @Rpc(
-      description =
-          "Connects to a Wi-Fi network. This covers the common network types like open and "
-              + "WPA2.")
-  public void wifiConnectSimple(String ssid, @Nullable String password)
-      throws InterruptedException, JSONException, WifiManagerSnippetException {
+    @Rpc(
+            description =
+                    "Connects to a Wi-Fi network. This covers the common network types like open and "
+                            + "WPA2.")
+    public void wifiConnectSimple(String ssid, @Nullable String password)
+            throws JSONException, WifiManagerSnippetException {
         JSONObject config = new JSONObject();
         config.put("SSID", ssid);
         if (password != null) {
@@ -255,6 +251,9 @@ public class WifiManagerSnippet implements Snippet {
      *
      * <p>A network is configured if a WifiConfiguration was created for it and added with {@link
      * WifiManager#addNetwork(WifiConfiguration)}.
+     *
+     * @param ssid The SSID of the network.
+     * @return The WifiConfiguration object, or null if not found.
      */
     private WifiConfiguration getExistingConfiguredNetwork(String ssid) {
         List<WifiConfiguration> wifiConfigs = mWifiManager.getConfiguredNetworks();
@@ -275,20 +274,20 @@ public class WifiManagerSnippet implements Snippet {
      * @param wifiNetworkConfig A JSON object that contains the info required to connect to a Wi-Fi
      *     network. It follows the fields of WifiConfiguration type, e.g. {"SSID": "myWifi",
      *     "password": "12345678"}.
-     * @throws InterruptedException
-     * @throws JSONException
-     * @throws WifiManagerSnippetException
+     * @throws JSONException if JSON parsing fails.
+     * @throws WifiManagerSnippetException if connection fails.
      */
     @Rpc(description = "Connects to a Wi-Fi network.")
     public void wifiConnect(JSONObject wifiNetworkConfig)
-            throws InterruptedException, JSONException, WifiManagerSnippetException {
+            throws JSONException, WifiManagerSnippetException {
         Log.d("Got network config: " + wifiNetworkConfig);
         WifiConfiguration wifiConfig = JsonDeserializer.jsonToWifiConfig(wifiNetworkConfig);
         String SSID = wifiConfig.SSID;
         // Return directly if network is already connected.
         WifiInfo connectionInfo = mWifiManager.getConnectionInfo();
-        if (connectionInfo.getNetworkId() != -1
-                && connectionInfo.getSSID().equals(wifiConfig.SSID)) {
+        if (connectionInfo != null
+                && connectionInfo.getNetworkId() != -1
+                && wifiConfig.SSID.equals(connectionInfo.getSSID())) {
             Log.d("Network " + connectionInfo.getSSID() + " is already connected.");
             return;
         }
@@ -303,7 +302,7 @@ public class WifiManagerSnippet implements Snippet {
                     "Connecting to network \""
                             + existingConfig.SSID
                             + "\" with its existing configuration: "
-                            + existingConfig.toString());
+                            + existingConfig);
             wifiConfig = existingConfig;
             networkId = wifiConfig.networkId;
         } else {
@@ -322,9 +321,9 @@ public class WifiManagerSnippet implements Snippet {
 
         if (!Utils.waitUntil(() -> isWifiConnected() && isWifiConnectedToSsid(SSID), 90)) {
             throw new WifiManagerSnippetException(
-                String.format(
-                    "Failed to connect to '%s', timeout! Current connection: '%s'",
-                    wifiNetworkConfig, mWifiManager.getConnectionInfo().getSSID()));
+                    String.format(
+                            "Failed to connect to '%s', timeout! Current connection: '%s'",
+                            wifiNetworkConfig, mWifiManager.getConnectionInfo().getSSID()));
         }
         Log.d(
                 "Connected to network '"
@@ -349,8 +348,11 @@ public class WifiManagerSnippet implements Snippet {
                             + "WifiConfiguration object.")
     public List<JSONObject> wifiGetConfiguredNetworks() throws JSONException {
         List<JSONObject> networks = new ArrayList<>();
-        for (WifiConfiguration config : mWifiManager.getConfiguredNetworks()) {
-            networks.add(mJsonSerializer.toJson(config));
+        List<WifiConfiguration> configs = mWifiManager.getConfiguredNetworks();
+        if (configs != null) {
+            for (WifiConfiguration config : configs) {
+                networks.add(mJsonSerializer.toJson(config));
+            }
         }
         return networks;
     }
@@ -369,11 +371,11 @@ public class WifiManagerSnippet implements Snippet {
         return mJsonSerializer.toJson(mWifiManager.getConnectionInfo());
     }
 
-  @Rpc(
-      description =
-          "Get the info from last successful DHCP request, which is a serialized DhcpInfo "
-              + "object.")
-  public JSONObject wifiGetDhcpInfo() throws JSONException {
+    @Rpc(
+            description =
+                    "Get the info from last successful DHCP request, which is a serialized DhcpInfo "
+                            + "object.")
+    public JSONObject wifiGetDhcpInfo() throws JSONException {
         return mJsonSerializer.toJson(mWifiManager.getDhcpInfo());
     }
 
@@ -382,7 +384,6 @@ public class WifiManagerSnippet implements Snippet {
         return (boolean) Utils.invokeByReflection(mWifiManager, "isWifiApEnabled");
     }
 
-    @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
     @RpcMinSdk(Build.VERSION_CODES.LOLLIPOP)
     @Rpc(
             description =
@@ -393,7 +394,6 @@ public class WifiManagerSnippet implements Snippet {
     }
 
     /** Checks if TDLS is supported. */
-    @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
     @RpcMinSdk(Build.VERSION_CODES.LOLLIPOP)
     @Rpc(description = "check if TDLS is supported).")
     public boolean wifiIsTdlsSupported() {
@@ -410,7 +410,7 @@ public class WifiManagerSnippet implements Snippet {
      * Enable Wi-Fi Soft AP (hotspot).
      *
      * @param configuration The same format as the param wifiNetworkConfig param for wifiConnect.
-     * @throws Throwable
+     * @throws Throwable if an error occurs.
      */
     @Rpc(description = "Enable Wi-Fi Soft AP (hotspot).")
     public void wifiEnableSoftAp(@Nullable JSONObject configuration) throws Throwable {
@@ -427,14 +427,26 @@ public class WifiManagerSnippet implements Snippet {
                         mWifiManager, "setWifiApEnabled", wifiConfiguration, true)) {
             throw new WifiManagerSnippetException("Failed to initiate turning on Wi-Fi Soft AP.");
         }
-        if (!Utils.waitUntil(() -> wifiIsApEnabled() == true, 60)) {
+        if (!Utils.waitUntil(
+                () -> {
+                    try {
+                        return wifiIsApEnabled();
+                    } catch (Throwable e) {
+                        return false;
+                    }
+                },
+                60)) {
             throw new WifiManagerSnippetException(
                     "Timed out after 60s waiting for Wi-Fi Soft AP state to turn on with configuration: "
                             + configuration);
         }
     }
 
-    /** Disables Wi-Fi Soft AP (hotspot). */
+    /**
+     * Disables Wi-Fi Soft AP (hotspot).
+     *
+     * @throws Throwable if an error occurs.
+     */
     @Rpc(description = "Disable Wi-Fi Soft AP (hotspot).")
     public void wifiDisableSoftAp() throws Throwable {
         if (!(boolean)
@@ -445,7 +457,15 @@ public class WifiManagerSnippet implements Snippet {
                         false)) {
             throw new WifiManagerSnippetException("Failed to initiate turning off Wi-Fi Soft AP.");
         }
-        if (!Utils.waitUntil(() -> wifiIsApEnabled() == false, 60)) {
+        if (!Utils.waitUntil(
+                () -> {
+                    try {
+                        return !wifiIsApEnabled();
+                    } catch (Throwable e) {
+                        return false;
+                    }
+                },
+                60)) {
             throw new WifiManagerSnippetException(
                     "Timed out after 60s waiting for Wi-Fi Soft AP state to turn off.");
         }
@@ -454,13 +474,12 @@ public class WifiManagerSnippet implements Snippet {
     @Override
     public void shutdown() {}
 
-
     private class WifiScanReceiver extends BroadcastReceiver {
 
         @Override
         public void onReceive(Context c, Intent intent) {
             String action = intent.getAction();
-            if (action.equals(WifiManager.SCAN_RESULTS_AVAILABLE_ACTION)) {
+            if (WifiManager.SCAN_RESULTS_AVAILABLE_ACTION.equals(action)) {
                 mIsScanResultAvailable = true;
             }
         }

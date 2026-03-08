@@ -16,6 +16,7 @@
 
 package com.google.android.mobly.snippet.bundled;
 
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.os.Build;
 import android.telephony.SubscriptionInfo;
@@ -28,6 +29,8 @@ import com.google.android.mobly.snippet.rpc.RpcDefault;
 import com.google.android.mobly.snippet.util.Log;
 
 /** Snippet class for telephony RPCs. */
+@SuppressWarnings("unused")
+@SuppressLint("MissingPermission")
 public class TelephonySnippet implements Snippet {
 
     private final TelephonyManager mTelephonyManager;
@@ -46,8 +49,8 @@ public class TelephonySnippet implements Snippet {
         String phoneNumber = "";
         try {
             // Get the phone number for the given sim slot.
-            SubscriptionInfo activeSubInfoForSlot = mSubscriptionManager
-                .getActiveSubscriptionInfoForSimSlotIndex(simSlot);
+            SubscriptionInfo activeSubInfoForSlot =
+                    mSubscriptionManager.getActiveSubscriptionInfoForSimSlotIndex(simSlot);
             phoneNumber = getPhoneNumber(activeSubInfoForSlot);
             if (isNullOrEmpty(phoneNumber)) {
                 // Fall back to the default subscription if the phone number is unavailable.
@@ -110,8 +113,7 @@ public class TelephonySnippet implements Snippet {
             return mTelephonyManager.getCallState();
         } else {
             SubscriptionInfo mSubscriptionInfo =
-                    mSubscriptionManager.getActiveSubscriptionInfoForSimSlotIndex(
-                            simSlot.intValue());
+                    mSubscriptionManager.getActiveSubscriptionInfoForSimSlotIndex(simSlot);
             if (mSubscriptionInfo != null) {
                 thisState =
                         mTelephonyManager

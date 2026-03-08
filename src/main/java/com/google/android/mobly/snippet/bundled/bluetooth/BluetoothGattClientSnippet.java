@@ -16,6 +16,7 @@
 
 package com.google.android.mobly.snippet.bundled.bluetooth;
 
+import android.annotation.SuppressLint;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothGatt;
@@ -40,11 +41,13 @@ import com.google.android.mobly.snippet.rpc.RpcMinSdk;
 import com.google.android.mobly.snippet.util.Log;
 import java.util.ArrayList;
 import java.util.HashMap;
-import org.json.JSONException;
+import java.util.Map;
 
 /** Snippet class exposing Android APIs in BluetoothGatt. */
+@SuppressWarnings("unused")
+@SuppressLint("MissingPermission")
 public class BluetoothGattClientSnippet implements Snippet {
-    private static class BluetoothGattClientSnippetException extends Exception {
+    public static class BluetoothGattClientSnippetException extends Exception {
         private static final long serialVersionUID = 1;
 
         public BluetoothGattClientSnippetException(String msg) {
@@ -54,8 +57,7 @@ public class BluetoothGattClientSnippet implements Snippet {
 
     private final Context context;
     private final EventCache eventCache;
-    private final HashMap<String, HashMap<String, BluetoothGattCharacteristic>>
-            characteristicHashMap;
+    private final Map<String, Map<String, BluetoothGattCharacteristic>> characteristicHashMap;
 
     private BluetoothGatt bluetoothGattClient;
 
@@ -70,7 +72,7 @@ public class BluetoothGattClientSnippet implements Snippet {
 
     @RpcMinSdk(VERSION_CODES.LOLLIPOP)
     @AsyncRpc(description = "Start BLE client.")
-    public void bleConnectGatt(String callbackId, String deviceAddress) throws JSONException {
+    public void bleConnectGatt(String callbackId, String deviceAddress) {
         BluetoothDevice remoteDevice =
                 BluetoothAdapter.getDefaultAdapter().getRemoteDevice(deviceAddress);
         BluetoothGattCallback gattCallback = new DefaultBluetoothGattCallback(callbackId);
@@ -107,13 +109,23 @@ public class BluetoothGattClientSnippet implements Snippet {
     @RpcMinSdk(VERSION_CODES.LOLLIPOP)
     @Rpc(description = "BLE read operation.")
     public boolean bleReadOperation(String serviceUuid, String characteristicUuid)
-            throws JSONException, BluetoothGattClientSnippetException {
+            throws BluetoothGattClientSnippetException {
         if (bluetoothGattClient == null) {
             throw new BluetoothGattClientSnippetException("BLE client is not initialized.");
         }
-        boolean result =
-                bluetoothGattClient.readCharacteristic(
-                        characteristicHashMap.get(serviceUuid).get(characteristicUuid));
+        Map<String, BluetoothGattCharacteristic> serviceCharacteristics =
+                characteristicHashMap.get(serviceUuid);
+        if (serviceCharacteristics == null) {
+            throw new BluetoothGattClientSnippetException(
+                    "Service not found: " + serviceUuid + ". Did you call bleDiscoverServices?");
+        }
+        BluetoothGattCharacteristic characteristic =
+                serviceCharacteristics.get(characteristicUuid);
+        if (characteristic == null) {
+            throw new BluetoothGattClientSnippetException(
+                    "Characteristic not found: " + characteristicUuid);
+        }
+        boolean result = bluetoothGattClient.readCharacteristic(characteristic);
         Log.d("Read operation returned result " + result);
         return result;
     }
@@ -121,12 +133,22 @@ public class BluetoothGattClientSnippet implements Snippet {
     @RpcMinSdk(VERSION_CODES.LOLLIPOP)
     @Rpc(description = "BLE write operation.")
     public boolean bleWriteOperation(String serviceUuid, String characteristicUuid, String data)
-            throws JSONException, BluetoothGattClientSnippetException {
+            throws BluetoothGattClientSnippetException {
         if (bluetoothGattClient == null) {
             throw new BluetoothGattClientSnippetException("BLE client is not initialized.");
         }
+        Map<String, BluetoothGattCharacteristic> serviceCharacteristics =
+                characteristicHashMap.get(serviceUuid);
+        if (serviceCharacteristics == null) {
+            throw new BluetoothGattClientSnippetException(
+                    "Service not found: " + serviceUuid + ". Did you call bleDiscoverServices?");
+        }
         BluetoothGattCharacteristic characteristic =
-                characteristicHashMap.get(serviceUuid).get(characteristicUuid);
+                serviceCharacteristics.get(characteristicUuid);
+        if (characteristic == null) {
+            throw new BluetoothGattClientSnippetException(
+                    "Characteristic not found: " + characteristicUuid);
+        }
         characteristic.setValue(Base64.decode(data, Base64.NO_WRAP));
         boolean result = bluetoothGattClient.writeCharacteristic(characteristic);
         Log.d("Write operation returned result " + result);
@@ -136,7 +158,9 @@ public class BluetoothGattClientSnippet implements Snippet {
     @RpcMinSdk(VERSION_CODES.LOLLIPOP)
     @Rpc(description = "Change MTU.")
     public void bleRequestMtu(int mtu) {
-        bluetoothGattClient.requestMtu(mtu);
+        if (bluetoothGattClient != null) {
+            bluetoothGattClient.requestMtu(mtu);
+        }
     }
 
     private class DefaultBluetoothGattCallback extends BluetoothGattCallback {
@@ -169,7 +193,7 @@ public class BluetoothGattClientSnippet implements Snippet {
             event.getData().putString("status", MbsEnums.BLE_STATUS_TYPE.getString(status));
             ArrayList<Bundle> services = new ArrayList<>();
             for (BluetoothGattService service : gatt.getServices()) {
-                HashMap<String, BluetoothGattCharacteristic> characteristics = new HashMap<>();
+                Map<String, BluetoothGattCharacteristic> characteristics = new HashMap<>();
                 for (BluetoothGattCharacteristic characteristic : service.getCharacteristics()) {
                     characteristics.put(characteristic.getUuid().toString(), characteristic);
                 }

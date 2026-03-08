@@ -16,7 +16,7 @@
 
 package com.google.android.mobly.snippet.bundled.bluetooth;
 
-import android.annotation.TargetApi;
+import android.annotation.SuppressLint;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothGatt;
 import android.bluetooth.BluetoothGattCharacteristic;
@@ -27,9 +27,9 @@ import android.bluetooth.BluetoothManager;
 import android.bluetooth.BluetoothProfile;
 import android.content.Context;
 import android.os.Build.VERSION_CODES;
-import android.os.DeadObjectException;
 import android.os.SystemClock;
 import android.util.Base64;
+import androidx.annotation.RequiresApi;
 import androidx.test.platform.app.InstrumentationRegistry;
 import com.google.android.mobly.snippet.Snippet;
 import com.google.android.mobly.snippet.bundled.utils.DataHolder;
@@ -43,14 +43,16 @@ import com.google.android.mobly.snippet.rpc.Rpc;
 import com.google.android.mobly.snippet.rpc.RpcMinSdk;
 import com.google.android.mobly.snippet.util.Log;
 import java.util.List;
+import java.util.UUID;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
-import java.util.UUID;
 
 /** Snippet class exposing Android APIs in BluetoothGattServer. */
+@SuppressWarnings("unused")
+@SuppressLint("MissingPermission")
 public class BluetoothGattServerSnippet implements Snippet {
-    private static class BluetoothGattServerSnippetException extends Exception {
+    public static class BluetoothGattServerSnippetException extends Exception {
         private static final long serialVersionUID = 1;
 
         public BluetoothGattServerSnippetException(String msg) {
@@ -84,8 +86,7 @@ public class BluetoothGattServerSnippet implements Snippet {
 
     @RpcMinSdk(VERSION_CODES.LOLLIPOP)
     @AsyncRpc(description = "Start BLE server.")
-    public void bleStartServer(String callbackId, JSONArray services)
-            throws JSONException, DeadObjectException {
+    public void bleStartServer(String callbackId, JSONArray services) throws JSONException {
         BluetoothGattServerCallback gattServerCallback =
                 new DefaultBluetoothGattServerCallback(callbackId);
         bluetoothGattServer = bluetoothManager.openGattServer(context, gattServerCallback);
@@ -95,7 +96,7 @@ public class BluetoothGattServerSnippet implements Snippet {
     @RpcMinSdk(VERSION_CODES.LOLLIPOP)
     @AsyncRpc(description = "Start BLE server with workaround.")
     public void bleStartServerWithWorkaround(String callbackId, JSONArray services)
-            throws JSONException, DeadObjectException {
+            throws JSONException {
         BluetoothGattServerCallback gattServerCallback =
                 new DefaultBluetoothGattServerCallback(callbackId);
         boolean isGattServerStarted = false;
@@ -132,7 +133,8 @@ public class BluetoothGattServerSnippet implements Snippet {
 
     @RpcMinSdk(VERSION_CODES.LOLLIPOP)
     @Rpc(description = "Disconnect a device from the server.")
-    public void bleCancelConnectionByAddress(String address) throws BluetoothGattServerSnippetException {
+    public void bleCancelConnectionByAddress(String address)
+            throws BluetoothGattServerSnippetException {
         if (bluetoothGattServer == null) {
             throw new BluetoothGattServerSnippetException("BLE server is not initialized.");
         }
@@ -142,7 +144,7 @@ public class BluetoothGattServerSnippet implements Snippet {
         }
     }
 
-    @TargetApi(VERSION_CODES.TIRAMISU)
+    @RequiresApi(VERSION_CODES.TIRAMISU)
     @RpcMinSdk(VERSION_CODES.TIRAMISU)
     @Rpc(description = "Send a notification that a characteristic changed.")
     public void bleNotifyCharacteristicChanged(
@@ -197,8 +199,8 @@ public class BluetoothGattServerSnippet implements Snippet {
             SnippetEvent event = new SnippetEvent(callbackId, "onServiceAdded");
             event.getData().putString("status", MbsEnums.BLE_STATUS_TYPE.getString(status));
             event.getData()
-                    .putParcelable("Service",
-                                  JsonSerializer.serializeBluetoothGattService(service));
+                    .putParcelable(
+                            "Service", JsonSerializer.serializeBluetoothGattService(service));
             eventCache.postEvent(event);
         }
 
@@ -242,8 +244,7 @@ public class BluetoothGattServerSnippet implements Snippet {
         @Override
         public void onExecuteWrite(BluetoothDevice device, int requestId, boolean execute) {
             Log.d("Bluetooth Gatt Server received an execute write request");
-            bluetoothGattServer.sendResponse(
-                    device, requestId, BluetoothGatt.GATT_SUCCESS, 0, null);
+            bluetoothGattServer.sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, 0, null);
         }
 
         @Override

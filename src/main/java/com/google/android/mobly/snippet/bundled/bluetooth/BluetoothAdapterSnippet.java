@@ -16,7 +16,7 @@
 
 package com.google.android.mobly.snippet.bundled.bluetooth;
 
-import android.annotation.TargetApi;
+import android.annotation.SuppressLint;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothStatusCodes;
@@ -27,6 +27,7 @@ import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
+import androidx.annotation.RequiresApi;
 import androidx.test.platform.app.InstrumentationRegistry;
 import androidx.test.uiautomator.By;
 import androidx.test.uiautomator.BySelector;
@@ -40,18 +41,19 @@ import com.google.android.mobly.snippet.rpc.RpcMinSdk;
 import com.google.android.mobly.snippet.util.Log;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.List;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Pattern;
-import org.json.JSONException;
 
 /** Snippet class exposing Android APIs in BluetoothAdapter. */
+@SuppressWarnings("unused")
+@SuppressLint("MissingPermission")
 public class BluetoothAdapterSnippet implements Snippet {
 
-    private static class BluetoothAdapterSnippetException extends Exception {
+    public static class BluetoothAdapterSnippetException extends Exception {
 
         private static final long serialVersionUID = 1;
 
@@ -82,7 +84,7 @@ public class BluetoothAdapterSnippet implements Snippet {
     public BluetoothAdapterSnippet() throws Throwable {
         mContext = InstrumentationRegistry.getInstrumentation().getContext();
         // Use a synchronized map to avoid racing problems
-        mReceivers = Collections.synchronizedMap(new HashMap<String, BroadcastReceiver>());
+        mReceivers = Collections.synchronizedMap(new HashMap<>());
         Utils.adaptShellPermissionIfRequired(mContext);
         mPackageManager = mContext.getPackageManager();
     }
@@ -90,8 +92,8 @@ public class BluetoothAdapterSnippet implements Snippet {
     /**
      * Gets a {@link BluetoothDevice} that has either been paired or discovered.
      *
-     * @param deviceAddress
-     * @return
+     * @param deviceAddress The address of the device to find.
+     * @return The BluetoothDevice object.
      */
     public static BluetoothDevice getKnownDeviceByAddress(String deviceAddress) {
         BluetoothDevice pairedDevice = getPairedDeviceByAddress(deviceAddress);
@@ -122,13 +124,15 @@ public class BluetoothAdapterSnippet implements Snippet {
         try {
             return UiDevice.getInstance(InstrumentationRegistry.getInstrumentation());
         } catch (IllegalStateException e) {
-            throw new BluetoothAdapterSnippetException("Failed to get UiDevice. Please ensure that "
-                    + "no other UiAutomation service is running.", e);
+            throw new BluetoothAdapterSnippetException(
+                    "Failed to get UiDevice. Please ensure that no other UiAutomation service is"
+                            + " running.",
+                    e);
         }
     }
 
     @Rpc(description = "Enable bluetooth with a 30s timeout.")
-    public void btEnable() throws BluetoothAdapterSnippetException, InterruptedException {
+    public void btEnable() throws BluetoothAdapterSnippetException {
         if (mBluetoothAdapter.getState() == BluetoothAdapter.STATE_ON) {
             return;
         }
@@ -159,7 +163,7 @@ public class BluetoothAdapterSnippet implements Snippet {
     }
 
     @Rpc(description = "Disable bluetooth with a 30s timeout.")
-    public void btDisable() throws BluetoothAdapterSnippetException, InterruptedException {
+    public void btDisable() throws BluetoothAdapterSnippetException {
         if (mBluetoothAdapter.getState() == BluetoothAdapter.STATE_OFF) {
             return;
         }
@@ -183,7 +187,8 @@ public class BluetoothAdapterSnippet implements Snippet {
 
     @Rpc(
             description =
-                    "Get bluetooth discovery results, which is a list of serialized BluetoothDevice objects.")
+                    "Get bluetooth discovery results, which is a list of serialized"
+                            + " BluetoothDevice objects.")
     public ArrayList<Bundle> btGetCachedScanResults() {
         return mJsonSerializer.serializeBluetoothDeviceList(mDiscoveryResults.values());
     }
@@ -208,15 +213,16 @@ public class BluetoothAdapterSnippet implements Snippet {
     @Rpc(description = "Automatically confirm the incoming BT pairing request.")
     public void btStartAutoAcceptIncomingPairRequest() throws Throwable {
         BroadcastReceiver receiver = new PairingBroadcastReceiver(mContext);
-        mContext.registerReceiver(
-                receiver, PairingBroadcastReceiver.filter);
+        mContext.registerReceiver(receiver, PairingBroadcastReceiver.filter);
         mReceivers.put("AutoAcceptIncomingPairReceiver", receiver);
     }
 
     @Rpc(description = "Stop the incoming BT pairing request.")
-    public void btStopAutoAcceptIncomingPairRequest() throws Throwable {
+    public void btStopAutoAcceptIncomingPairRequest() {
         BroadcastReceiver receiver = mReceivers.remove("AutoAcceptIncomingPairReceiver");
-        mContext.unregisterReceiver(receiver);
+        if (receiver != null) {
+            mContext.unregisterReceiver(receiver);
+        }
     }
 
     @Rpc(description = "Returns the hardware address of the local Bluetooth adapter.")
@@ -226,10 +232,9 @@ public class BluetoothAdapterSnippet implements Snippet {
 
     @Rpc(
             description =
-                    "Start discovery, wait for discovery to complete, and return results, which is a list of "
-                            + "serialized BluetoothDevice objects.")
-    public List<Bundle> btDiscoverAndGetResults()
-            throws InterruptedException, BluetoothAdapterSnippetException {
+                    "Start discovery, wait for discovery to complete, and return results, which is"
+                            + " a list of serialized BluetoothDevice objects.")
+    public List<Bundle> btDiscoverAndGetResults() throws BluetoothAdapterSnippetException {
         IntentFilter filter = new IntentFilter(BluetoothDevice.ACTION_FOUND);
         filter.addAction(BluetoothAdapter.ACTION_DISCOVERY_FINISHED);
         if (mBluetoothAdapter.isDiscovering()) {
@@ -282,10 +287,11 @@ public class BluetoothAdapterSnippet implements Snippet {
                 uiDevice.findObject(allowButtonSelector).click();
             }
         } else if (Build.VERSION.SDK_INT == 30) {
-            if (!(boolean) Utils.invokeByReflection(
-                    mBluetoothAdapter,
-                    "setScanMode",
-                    BluetoothAdapter.SCAN_MODE_CONNECTABLE_DISCOVERABLE)) {
+            if (!(boolean)
+                    Utils.invokeByReflection(
+                            mBluetoothAdapter,
+                            "setScanMode",
+                            BluetoothAdapter.SCAN_MODE_CONNECTABLE_DISCOVERABLE)) {
                 throw new BluetoothAdapterSnippetException("Failed to become discoverable.");
             }
         } else {
@@ -297,8 +303,7 @@ public class BluetoothAdapterSnippet implements Snippet {
 
     private static final Pattern TEXT_PATTERN_ALLOW =
             Pattern.compile("allow", Pattern.CASE_INSENSITIVE);
-    private static final Pattern TEXT_PATTERN_OK =
-            Pattern.compile("ok", Pattern.CASE_INSENSITIVE);
+    private static final Pattern TEXT_PATTERN_OK = Pattern.compile("ok", Pattern.CASE_INSENSITIVE);
 
     @Rpc(description = "Cancel ongoing bluetooth discovery.")
     public void btCancelDiscovery() throws BluetoothAdapterSnippetException {
@@ -337,8 +342,7 @@ public class BluetoothAdapterSnippet implements Snippet {
     }
 
     @Rpc(description = "Get the list of paired bluetooth devices.")
-    public List<Bundle> btGetPairedDevices()
-            throws BluetoothAdapterSnippetException, InterruptedException, JSONException {
+    public List<Bundle> btGetPairedDevices() {
         ArrayList<Bundle> pairedDevices = new ArrayList<>();
         for (BluetoothDevice device : mBluetoothAdapter.getBondedDevices()) {
             pairedDevices.add(JsonSerializer.serializeBluetoothDevice(device));
@@ -376,8 +380,7 @@ public class BluetoothAdapterSnippet implements Snippet {
                             "Failed to initiate the un-pairing process for device: "
                                     + deviceAddress);
                 }
-                if (!Utils.waitUntil(
-                        () -> device.getBondState() == BluetoothDevice.BOND_NONE, 30)) {
+                if (!Utils.waitUntil(() -> device.getBondState() == BluetoothDevice.BOND_NONE, 30)) {
                     throw new BluetoothAdapterSnippetException(
                             "Failed to un-pair device " + deviceAddress + " after 30s.");
                 }
@@ -387,7 +390,7 @@ public class BluetoothAdapterSnippet implements Snippet {
         throw new NoSuchElementException("No device with address " + deviceAddress + " is paired.");
     }
 
-    @TargetApi(Build.VERSION_CODES.TIRAMISU)
+    @RequiresApi(Build.VERSION_CODES.TIRAMISU)
     @RpcMinSdk(Build.VERSION_CODES.TIRAMISU)
     @Rpc(description = "Returns true if LE audio is supported, false otherwise.")
     public boolean btIsLeAudioSupported() {
@@ -396,10 +399,12 @@ public class BluetoothAdapterSnippet implements Snippet {
 
     @Override
     public void shutdown() {
-        for (Map.Entry<String, BroadcastReceiver> entry : mReceivers.entrySet()) {
-            mContext.unregisterReceiver(entry.getValue());
+        synchronized (mReceivers) {
+            for (Map.Entry<String, BroadcastReceiver> entry : mReceivers.entrySet()) {
+                mContext.unregisterReceiver(entry.getValue());
+            }
+            mReceivers.clear();
         }
-        mReceivers.clear();
     }
 
     private class BluetoothScanReceiver extends BroadcastReceiver {
@@ -414,9 +419,10 @@ public class BluetoothAdapterSnippet implements Snippet {
             if (BluetoothAdapter.ACTION_DISCOVERY_FINISHED.equals(action)) {
                 mIsDiscoveryFinished = true;
             } else if (BluetoothDevice.ACTION_FOUND.equals(action)) {
-                BluetoothDevice device =
-                        (BluetoothDevice) intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
-                mDiscoveryResults.put(device.getAddress(), device);
+                BluetoothDevice device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
+                if (device != null) {
+                    mDiscoveryResults.put(device.getAddress(), device);
+                }
             }
         }
     }
@@ -432,7 +438,13 @@ public class BluetoothAdapterSnippet implements Snippet {
         int prevState = mBluetoothAdapter.getState();
         while (System.currentTimeMillis() < timeoutMs) {
             // Delay.
-            Utils.waitUntil(() -> false, /* timeout= */ 1);
+            try {
+                Thread.sleep(100);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new BluetoothAdapterSnippetException(
+                        "Interrupted while waiting for BT state stabilization", e);
+            }
 
             int currentState = mBluetoothAdapter.getState();
             if (currentState != prevState) {

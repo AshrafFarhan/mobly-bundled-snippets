@@ -16,7 +16,7 @@
 
 package com.google.android.mobly.snippet.bundled;
 
-import android.annotation.TargetApi;
+import android.annotation.SuppressLint;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.le.AdvertiseCallback;
 import android.bluetooth.le.AdvertiseData;
@@ -40,8 +40,9 @@ import java.util.HashMap;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-/** Snippet class exposing Android APIs in WifiManager. */
-@TargetApi(Build.VERSION_CODES.LOLLIPOP_MR1)
+/** Snippet class exposing Android APIs in BluetoothLeAdvertiser. */
+@SuppressWarnings("unused")
+@SuppressLint("MissingPermission")
 public class BluetoothLeAdvertiserSnippet implements Snippet {
     private static class BluetoothLeAdvertiserSnippetException extends Exception {
         private static final long serialVersionUID = 1;
@@ -147,7 +148,7 @@ public class BluetoothLeAdvertiserSnippet implements Snippet {
      *
      * @param callbackId The callbackId corresponding to the {@link
      *     BluetoothLeAdvertiserSnippet#bleStartAdvertising} call that started the advertising.
-     * @throws BluetoothLeScannerSnippet.BluetoothLeScanSnippetException
+     * @throws BluetoothLeAdvertiserSnippetException
      */
     @RpcMinSdk(Build.VERSION_CODES.LOLLIPOP_MR1)
     @Rpc(description = "Stop BLE advertising.")
@@ -162,7 +163,7 @@ public class BluetoothLeAdvertiserSnippet implements Snippet {
 
     private static class DefaultAdvertiseCallback extends AdvertiseCallback {
         private final String mCallbackId;
-        public static RpcEnum ADVERTISE_FAILURE_ERROR_CODE =
+        public static final RpcEnum ADVERTISE_FAILURE_ERROR_CODE =
                 new RpcEnum.Builder()
                         .add("ADVERTISE_FAILED_ALREADY_STARTED", ADVERTISE_FAILED_ALREADY_STARTED)
                         .add("ADVERTISE_FAILED_DATA_TOO_LARGE", ADVERTISE_FAILED_DATA_TOO_LARGE)

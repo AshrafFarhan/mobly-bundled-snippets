@@ -16,6 +16,7 @@
 
 package com.google.android.mobly.snippet.bundled;
 
+import android.annotation.SuppressLint;
 import android.app.DownloadManager;
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -36,6 +37,8 @@ import java.util.List;
 import java.util.Locale;
 
 /** Snippet class for networking RPCs. */
+@SuppressWarnings("unused")
+@SuppressLint("MissingPermission")
 public class NetworkingSnippet implements Snippet {
 
     private final Context mContext;
@@ -67,9 +70,8 @@ public class NetworkingSnippet implements Snippet {
             return false;
         }
 
-        try {
-            Socket sock = new Socket(addr, port);
-            sock.close();
+        try (Socket sock = new Socket(addr, port)) {
+            // Socket is closed by try-with-resources
         } catch (IOException ioerr) {
             Log.d("Did not make connection to host: " + ioerr.getMessage());
             return false;
@@ -86,7 +88,7 @@ public class NetworkingSnippet implements Snippet {
 
         Uri uri = Uri.parse(url);
         List<String> pathsegments = uri.getPathSegments();
-        if (pathsegments.size() < 1) {
+        if (pathsegments.isEmpty()) {
             throw new IllegalArgumentException(
                     String.format(Locale.US, "The Uri %s does not have a path.", uri.toString()));
         }
@@ -135,9 +137,11 @@ public class NetworkingSnippet implements Snippet {
         @Override
         public void onReceive(Context context, Intent intent) {
             String action = intent.getAction();
-            long gotid = (long) intent.getExtras().get("extra_download_id");
-            if (DownloadManager.ACTION_DOWNLOAD_COMPLETE.equals(action) && gotid == mReqid) {
-                mIsDownloadComplete = true;
+            if (DownloadManager.ACTION_DOWNLOAD_COMPLETE.equals(action)) {
+                long gotid = intent.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1);
+                if (gotid == mReqid) {
+                    mIsDownloadComplete = true;
+                }
             }
         }
     }

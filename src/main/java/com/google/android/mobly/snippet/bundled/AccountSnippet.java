@@ -20,6 +20,7 @@ import android.accounts.Account;
 import android.accounts.AccountManager;
 import android.accounts.AccountManagerFuture;
 import android.accounts.AccountsException;
+import android.annotation.SuppressLint;
 import android.content.ContentResolver;
 import android.content.Context;
 import android.content.SyncAdapterType;
@@ -51,6 +52,8 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
  * <p>Google (gmail) accounts are of type "com.google" and their handling is managed by the
  * operating system. This class allows you to add and remove Google accounts from a device.
  */
+@SuppressWarnings("unused")
+@SuppressLint("MissingPermission")
 public class AccountSnippet implements Snippet {
     private static final String GOOGLE_ACCOUNT_TYPE = "com.google";
     private static final String AUTH_TOKEN_TYPE = "mail";

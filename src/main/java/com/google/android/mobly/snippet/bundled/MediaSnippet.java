@@ -16,6 +16,7 @@
 
 package com.google.android.mobly.snippet.bundled;
 
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.media.AudioAttributes;
 import android.media.AudioManager;
@@ -28,7 +29,9 @@ import com.google.android.mobly.snippet.Snippet;
 import com.google.android.mobly.snippet.rpc.Rpc;
 import java.io.IOException;
 
-/* Snippet class to control media playback. */
+/** Snippet class to control media playback. */
+@SuppressWarnings("unused")
+@SuppressLint("MissingPermission")
 public class MediaSnippet implements Snippet {
 
     private final Context mContext;
@@ -64,7 +67,7 @@ public class MediaSnippet implements Snippet {
     }
 
     @Rpc(description = "Stops media playback.")
-    public void mediaStop() throws IOException {
+    public void mediaStop() {
         mPlayer.stop();
     }
 
@@ -81,5 +84,7 @@ public class MediaSnippet implements Snippet {
     }
 
     @Override
-    public void shutdown() {}
+    public void shutdown() {
+        mPlayer.release();
+    }
 }

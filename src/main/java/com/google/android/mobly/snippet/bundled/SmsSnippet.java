@@ -18,6 +18,7 @@ package com.google.android.mobly.snippet.bundled;
 
 import static java.util.stream.Collectors.toCollection;
 
+import android.annotation.SuppressLint;
 import android.annotation.TargetApi;
 import android.app.Activity;
 import android.app.PendingIntent;
@@ -42,6 +43,8 @@ import java.util.stream.IntStream;
 import org.json.JSONObject;
 
 /** Snippet class for SMS RPCs. */
+@SuppressWarnings("unused")
+@SuppressLint("MissingPermission")
 public class SmsSnippet implements Snippet {
 
     private static class SmsSnippetException extends Exception {
@@ -85,7 +88,10 @@ public class SmsSnippet implements Snippet {
             ArrayList<String> parts = mSmsManager.divideMessage(message);
             receiver.setExpectedMessageCount(parts.size());
             if (Build.VERSION.SDK_INT >= 33) {
-                mContext.registerReceiver(receiver, new IntentFilter(SMS_SENT_ACTION), null,
+                mContext.registerReceiver(
+                        receiver,
+                        new IntentFilter(SMS_SENT_ACTION),
+                        null,
                         null,
                         Context.RECEIVER_EXPORTED);
             } else {
@@ -97,12 +103,12 @@ public class SmsSnippet implements Snippet {
                     /* parts= */ parts,
                     /* sentIntents= */ IntStream.range(0, parts.size())
                             .mapToObj(
-                                i ->
-                                        PendingIntent.getBroadcast(
-                                                /* context= */ mContext,
-                                                /* requestCode= */ 0,
-                                                /* intent= */ new Intent(SMS_SENT_ACTION),
-                                                /* flags= */ PendingIntent.FLAG_IMMUTABLE))
+                                    i ->
+                                            PendingIntent.getBroadcast(
+                                                    /* context= */ mContext,
+                                                    /* requestCode= */ 0,
+                                                    /* intent= */ new Intent(SMS_SENT_ACTION),
+                                                    /* flags= */ PendingIntent.FLAG_IMMUTABLE))
                             .collect(toCollection(ArrayList::new)),
                     /* deliveryIntents= */ null);
         } else {
@@ -114,9 +120,12 @@ public class SmsSnippet implements Snippet {
                             /* flags= */ PendingIntent.FLAG_IMMUTABLE);
             receiver.setExpectedMessageCount(1);
             if (Build.VERSION.SDK_INT >= 33) {
-                mContext.registerReceiver(receiver, new IntentFilter(SMS_SENT_ACTION), null,
-                    null,
-                    Context.RECEIVER_EXPORTED);
+                mContext.registerReceiver(
+                        receiver,
+                        new IntentFilter(SMS_SENT_ACTION),
+                        null,
+                        null,
+                        Context.RECEIVER_EXPORTED);
             } else {
                 mContext.registerReceiver(receiver, new IntentFilter(SMS_SENT_ACTION));
             }
@@ -160,7 +169,7 @@ public class SmsSnippet implements Snippet {
 
     private static class OutboundSmsReceiver extends BroadcastReceiver {
         private final String mCallbackId;
-        private Context mContext;
+        private final Context mContext;
         private final EventCache mEventCache;
         private int mExpectedMessageCount;
 
@@ -215,7 +224,7 @@ public class SmsSnippet implements Snippet {
 
     private static class SmsReceiver extends BroadcastReceiver {
         private final String mCallbackId;
-        private Context mContext;
+        private final Context mContext;
         private final EventCache mEventCache;
 
         public SmsReceiver(Context context, String callbackId) {

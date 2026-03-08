@@ -16,6 +16,7 @@
 
 package com.google.android.mobly.snippet.bundled;
 
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.net.Uri;
 import android.os.ParcelFileDescriptor;
@@ -29,6 +30,8 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 
 /** Snippet class for File and abstract storage URI operation RPCs. */
+@SuppressWarnings("unused")
+@SuppressLint("MissingPermission")
 public class FileSnippet implements Snippet {
 
     private final Context mContext;
@@ -41,18 +44,17 @@ public class FileSnippet implements Snippet {
     public String fileMd5Hash(String uri) throws IOException, NoSuchAlgorithmException {
         Uri uri_ = Uri.parse(uri);
         ParcelFileDescriptor pfd = mContext.getContentResolver().openFileDescriptor(uri_, "r");
+        if (pfd == null) {
+            throw new IOException("Failed to open file descriptor for URI: " + uri);
+        }
         MessageDigest md = MessageDigest.getInstance("MD5");
         int length = (int) pfd.getStatSize();
         byte[] buf = new byte[length];
-        ParcelFileDescriptor.AutoCloseInputStream stream =
-                new ParcelFileDescriptor.AutoCloseInputStream(pfd);
-        DigestInputStream dis = new DigestInputStream(stream, md);
-        try {
+        try (ParcelFileDescriptor.AutoCloseInputStream stream =
+                        new ParcelFileDescriptor.AutoCloseInputStream(pfd);
+                DigestInputStream dis = new DigestInputStream(stream, md)) {
             dis.read(buf, 0, length);
             return Utils.bytesToHexString(md.digest());
-        } finally {
-            dis.close();
-            stream.close();
         }
     }
 
